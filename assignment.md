@@ -60,7 +60,7 @@
   - user
 - the tables shall be build with an SQL script like the following using Lambda and Cloudformation (after the stack has created the RDS Resource)
 
-```mssql
+```sql
 CREATE TABLE `accounts` (
   `item_id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(100) DEFAULT NULL,
