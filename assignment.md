@@ -1,9 +1,5 @@
 # Serverless API Gateway with RDS
 
-[TOC]
-
-
-
 ## 1. Background Info
 
 - we are developing a microservice-based Business Platform running solely on AWS
@@ -13,8 +9,6 @@
 - the API-Gateway configuration is being delivered by a Swagger (OpenAPI) file which is being uploaded onto an s3 bucket and used during stack deployment as source for the API definition
 - the API access is being secured by a Cognito based Authorizer which uses a Cognito pool (Cognito stack)
 
-
-
 ## 2. Scope of delivery
 
 | __Results__              | __Description__                                              |
@@ -22,8 +16,6 @@
 | Documentation            | A documentation describing the resources and the approach as well as the elaborations on the lambda/ nodejs code |
 | Cloudformation templates | Cloudformation templates with the resources working as expected in an automated way (rds, lambda, cognito, Api Gateway, IAM) |
 | nodejs index.js          | indexjs files containing the code for the lambda functions   |
-
-
 
 ## 3. Details of the assignment
 
@@ -79,8 +71,6 @@ CREATE TABLE `accounts` (
   - be able to update a single record (update accounts)
   - be able to delete records (delete accounts)
 
-
-
 ## 4. Technology Stack
 
 The following technologies are mandatory and cannot be replaced by any other technology similar or not without our explicit approval:
@@ -114,19 +104,13 @@ The following technologies are mandatory and cannot be replaced by any other tec
 
 - Create a Pull Request and we will review the code
 
-
-
-
-
 ## 6. Provided by us
 
-- Documentation template as reference
+- [Documentation template](./documentation_template.md) as reference
 - Github Repository to pull from
-
-
 
 ## 7. Timeline
 
-- Project Start: 24.12.2018
+- Project Start: 16.01.2017
 - the timeframe for the project is set to 7 days upon hiring the developer
-- meaning the concept must be ready ==30.12.18==
+- meaning the concept must be ready ==23.12.18==
