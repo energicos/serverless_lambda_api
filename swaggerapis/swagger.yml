@@ -1,0 +1,159 @@
+openapi: 3.0.0
+info:
+  title: "TestAPI"
+  version: "1"
+components:
+  schemas:
+    Item:
+        type: object
+        required:
+        - item_id
+        properties:
+          item_id:
+            type: integer
+            format: int32
+          name:
+            type: string
+    GeneralError:
+        type: object
+        properties:
+          code:
+            type: integer
+            format: int32
+          message:
+            type: string
+
+paths:
+  # Get All Accounts
+  /accounts/items:
+      get:
+        description: Get all items in accounts table
+        responses:
+          '200':
+            description: A list of items
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Item'
+          '500':
+            description: Error getting items
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+        x-amazon-apigateway-integration:
+          uri:
+            Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAllAccountsLambdaStack.Outputs.LambdaArn}/invocations
+          responses:
+            default:
+              statusCode: 200
+          passthroughBehavior: "when_no_match"
+          httpMethod: "POST"
+          type: "aws_proxy"
+      # Insert or Update Items
+      put:
+        description: Search item in accounts table
+        requestBody:
+          description: List of Items
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        responses:
+          '200':
+            description: Successful inserted or updated
+          '404':
+            description: Failed insert and update
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+          '500':
+            description: Error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+
+        x-amazon-apigateway-integration:
+          uri:
+            Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateAccountsLambdaStack.Outputs.LambdaArn}/invocations
+          responses:
+            default:
+              statusCode: 200
+          passthroughBehavior: "when_no_match"
+          httpMethod: "POST"
+          type: "aws_proxy"
+  # Get Item
+  /accounts/item:
+      get:
+        parameters:
+          - in: query
+            name: id
+            schema:
+              type: integer
+              format: int32
+            required: true
+            description: item_id
+        description: Search item in accounts table
+        responses:
+          '200':
+            description: A list of items
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Item'
+          '404':
+            description: Item not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+          '500':
+            description: Error getting items
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+
+        x-amazon-apigateway-integration:
+          uri:
+            Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchAccountsLambdaStack.Outputs.LambdaArn}/invocations
+          responses:
+            default:
+              statusCode: 200
+          passthroughBehavior: "when_no_match"
+          httpMethod: "POST"
+          type: "aws_proxy"
+      delete:
+        description: Delete item in accounts
+        parameters:
+          - in: query
+            name: id
+            schema:
+              type: integer
+              format: int32
+            required: true
+            description: item_id
+        responses:
+          '200':
+            description: Delete Success
+          '500':
+            description: Delete Failed
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GeneralError'
+        x-amazon-apigateway-integration:
+          uri:
+            Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteAccountsLambdaStack.Outputs.LambdaArn}/invocations
+          passthroughBehavior: "when_no_match"
+          httpMethod: "POST"
+          type: "aws_proxy"

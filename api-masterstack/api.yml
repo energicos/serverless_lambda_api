@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  License: Apache-2.0
+Description: 'Create Serverless Application with ApiGateway, Lambda'
+Resources:
+  # Get All Accounts Lambda
+  GetAllAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'get-all-accounts'
+        S3Bucket: 'tests3-s3bucket-t9ne2v3mb47y'
+        RDSStackName: 'testrds'
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda.yml'
+      TimeoutInMinutes: 1
+  # Search Accounts Lambda
+  SearchAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'search-accounts'
+        S3Bucket: 'tests3-s3bucket-t9ne2v3mb47y'
+        RDSStackName: 'testrds'
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda.yml'
+      TimeoutInMinutes: 1
+  # Update Accounts Lambda
+  UpdateAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'update-accounts'
+        S3Bucket: 'tests3-s3bucket-t9ne2v3mb47y'
+        RDSStackName: 'testrds'
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda.yml'
+      TimeoutInMinutes: 1
+  # Update Accounts Lambda
+  DeleteAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'delete-accounts'
+        S3Bucket: 'tests3-s3bucket-t9ne2v3mb47y'
+        RDSStackName: 'testrds'
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda.yml'
+      TimeoutInMinutes: 1
+
+  # ApiGateway
+  ApiGatewayRestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Description: "testApi"
+      Name: TestAPI
+      Body:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: !Sub "s3://tests3-s3bucket-t9ne2v3mb47y/swagger.yml"
+      FailOnWarnings: true
+  # Lambda Permission
+  GetAllAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [GetAllAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda_permission.yml'
+      TimeoutInMinutes: 1
+  SearchAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [SearchAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda_permission.yml'
+      TimeoutInMinutes: 1
+  UpdateAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [UpdateAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda_permission.yml'
+      TimeoutInMinutes: 1
+  DeleteAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [DeleteAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: 'https://s3.eu-central-1.amazonaws.com/tests3-s3bucket-t9ne2v3mb47y/template_lambda_permission.yml'
+      TimeoutInMinutes: 1
