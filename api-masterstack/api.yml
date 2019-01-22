@@ -99,6 +99,14 @@ Resources:
           Parameters:
             Location: !Sub "s3://tests3-s3bucket-1nnle2vgcmsfm/swagger.yml"
       FailOnWarnings: true
+  # Deployment ApiGateway
+  DeploymentApiGatewayRestApi:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Deployment of Apigateway
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: !Ref EnvironmentName
+
   # Lambda Permission
   GetAllAccountsLambdaPermissionStack:
     Type: AWS::CloudFormation::Stack
@@ -136,7 +144,17 @@ Resources:
 Outputs:
   UserPoolId:
     Value: !Ref UserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
   UserPoolClientId:
     Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
   AdminUser:
     Value: !Ref AdminUser
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminUser"
+  APIEndpoint:
+    Value: !Ref DeploymentApiGatewayRestApi
+    Export:
+      Name: !Sub "${AWS::StackName}-APIEndpoint"
