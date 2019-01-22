@@ -18,7 +18,7 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 
 (This is a placeholder for an architecture graph)
 
-## Deployment Environment
+## 1. Deployment Environment
 
 * AWS EC2-AMI (with awscli installed)
 * AdminRole
@@ -26,7 +26,7 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 
 (This can be replaced with a Docker container)
 
-## 1. create a zip file for lambda code
+## 2. Create S3 Stack and Upload files
 
 - now create an s3 bucket
 
@@ -56,7 +56,7 @@ aws s3 cp . s3://${BucketName}  --recursive --include "*.yml"
 ```
 
 
-## 3. Launch RDS  Stack
+## 3. Launch RDS Stack
 
 ```shell
 cd api-masterstack
@@ -387,9 +387,6 @@ Parameters:
         - AttributeName: user_id
           KeyType: HASH
 ```
-
-
-
 
 
 ## 8. Delete all stacks
