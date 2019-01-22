@@ -8,6 +8,7 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 * EnvironmentName prefix
 * Enhancement (vpc, subnet, SecurityGroup)
 * Enhancement lambda code and api error message
+* Tagging
 
 
 ## Intro
@@ -76,7 +77,7 @@ aws lambda invoke --function-name ${LambdaArn} output.txt --region eu-central-1
 rm output.txt
 ```
 
-## 4. Launch API Stack
+## 4. Launch API Stack (testapi Stack)
 
 ```shell
 cd api-masterstack
@@ -88,16 +89,122 @@ aws cloudformation create-stack \
 --region eu-central-1
 ```
 
-aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id 187u2dsdnpnr6rpbkau4dss5ig	 --auth-parameters USERNAME=test,PASSWORD=Abcd12345% --region eu-central-1
+- get Endpoint from the deployed api, call it invoke_url
 
+'''shell
+// for example
+export invoke_url=https://t6xvekq3yf.execute-api.eu-central-1.amazonaws.com/Dev
+'''
+
+- get user_pool_id and user_pool_client_id
+
+'''shell
+export user_pool_id=$(aws cloudformation list-exports --query "Exports[?Name==\`testapi-UserPoolId\`].Value" --no-paginate --output text --region eu-central-1)
+export user_pool_client_id=$(aws cloudformation list-exports --query "Exports[?Name==\`testapi-UserPoolClientId\`].Value" --no-paginate --output text --region eu-central-1)
+'''
+
+- create user for testing
+
+'''shell
+export username=test
+aws cognito-idp admin-create-user --user-pool-id ${user_pool_id} --username ${username} --temporary-password Abcd12345% --region eu-central-1
+'''
+
+- response to challenge
+
+'''shell
+export session=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username#,PASSWORD=Abcd12345% --query 'Session' --output text --region eu-central-1)
+'''
+
+# Be Careful! This is not idempotent
 # response to the challenge
-aws cognito-idp admin-respond-to-auth-challenge --user-pool-id eu-central-1_CbzHpSukN --client-id 187u2dsdnpnr6rpbkau4dss5ig  --challenge-name NEW_PASSWORD_REQUIRED --challenge-responses USERNAME=test,NEW_PASSWORD=Abcd12345% --session m8AC3YUQblXSyRbWje1BT1FNsHUnjH_GEPmpWwxKkfaYZtnyIhQvvbM9NShcT_HPa1_y-ovS710BKYIaC7g4E2byN4FL-d__W87DdsvpqaM8-RuCAxsmp96OLQ7kYjKIXoPuhYTcsgrx_0sbRTIdqQSc4-fhsxgYw9GjEw8e1-8SzGvIdPir-t-6pPR5at80BZnVOxC2Ad7AIb7DQdrHRybAjBtG1QZKpY0tm6kmuIDGqltwRM2ZK3YuTt_edqWm8niYP9abBzCgz0da_JzMEuuqzUIkc7_AmY2T66B8e9CdClsS5X3mGWjYHZJX6pJPWLOd8vwtZ7suLH3u9O7NnqqNM_ceD6baVomAULw2YqoWULct9vZf2DGp23FbjiOGqoFBoo0TvKQKmIGYK9BOVm0dASUBZEFUmHfcXKC3vWOarAB7nbWHg3X_gNQgVmPBRrsdWrUU4SskRtZhrEsHhbJ9wR0_touCLTVDaO0dpgl-rNiIfONPf1ErPWQUZYdUeZSG5UFARsEl9AhXAA5onwfeM2zXWygF_pjYMKergLgnbDNTmMES1MrkEVLp-C8jcSI3c9-EMSbRMXuUqkjHomTGtvhO74k16dAYAcw9fz0EvoEJgv5RSHVVH_mwEvjizAxidOEgmlLiQslhvQsLwZh1wj5g-kscnlJMWcVR2lJwcNX8ZfTBHk1eOzVJYa7Du1V9deGkK0d68D3F6apyNDt44wC3G9RMcVU0ErxDIIg_KEfHm04EKFWqe1BAE7PyjGz01i-HxBh4YDBelFjdOXnt-PpCEWEWQ0lw1kFAjPzDv57yiQNTccG0MOAEUsa5 --region eu-central-1
+'''shell
+aws cognito-idp admin-respond-to-auth-challenge --user-pool-id ${user_pool_id} --client-id ${user_pool_client_id}  --challenge-name NEW_PASSWORD_REQUIRED --challenge-responses USERNAME=${username},NEW_PASSWORD=Abcd12345% --session ${session} --region eu-central-1
+'''
 
+- get IdToken
 
+'''shell
+export id_token=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username},PASSWORD=Abcd12345%  --region eu-central-1 --query "AuthenticationResult.IdToken" --output text)
+'''
 
+### 7.2 check the GET Endpoint
 
+(The id_token can expire! in which case you have to reaquire a id_token)
 
+- Test GetAllAccounts
 
+'''shell
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/items
+'''
+
+result:
+'''shell
+[{"item_id": 1, "name": "car"}, {"item_id": 2, "name": "teddy bear"}, {"item_id": 3, "name": "knife"}]
+'''
+
+- Test SearchAccounts
+
+'''shell
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/items?id=1
+'''
+
+- Test UpdateAccount
+
+'''shell
+curl -X PUT -H "Content-Type: application/json" -H "Authorization: ${id_token}" -d '[{"item_id":1,"name":"update"}]' ${invoke_url}/accounts/items
+'''
+
+result:
+
+'''shell
+{"code": "200", "message": "Successful insert or update"}
+'''
+
+you can get the updated value
+
+'''shell
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=1
+'''
+
+result:
+'''shell
+[{"item_id": 1, "name": "update"}]
+'''
+
+insert value:
+
+'''shell
+curl -X PUT -H "Content-Type: application/json" -H "Authorization: ${id_token}" -d '[{"item_id":4,"name":"insert"}]' ${invoke_url}/accounts/items
+'''
+
+result:
+'''
+{"code": "200", "message": "Successful insert or update"}
+'''
+
+get the inserted value
+
+'''shell
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
+# result
+[{"item_id": 4, "name": "insert"}]
+'''
+
+- Test delete Accounts
+
+'''shell
+curl -X DELETE -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
+# result
+{"code": "200", "message": "Delete Success"}
+'''
+
+try to get the deleted item
+'''shell
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
+# result
+[]
+'''
 
 ## 5. Parameter
 
@@ -289,42 +396,14 @@ Parameters:
 ```
 
 
-## 7. Test the API
 
-### 7.1 check the POST Endpoint
-
-- go to the Console - API Gateways
-- check if the API Gateway is hooked up to Lambda by selecting the **POST** option under **/users** and then clicking **TEST**
-- now we enter some testdata
-- on the Test page set
-  - **userId** = 123,
-  - **Request Body**
-
-```json
-{
-    "email": "myfancy@gmail.com"
-}
-```
-
-- now click **Test**
-- If everything worked, the **Status** should be **200** with no data
-
-
-
-### 7.2 check the GET Endpoint
-
-- check to see if your data was saved by going to the /hello GET Test page and trying a request
-- set **userId** to 123
-- the response body should contain the Request Body from the POST test
-
-
-
-curl -H "Content-Type: application/json" -H "Authorization: eyJraWQiOiJneVYralFGSmsrc2xJZFd3OCtjbHFoTGMwc0JUNG9MZGNKT3pzTW8xbE93PSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIwNzI0NTI5Zi0yYmFmLTRjZjAtYTI3Yi04YmRjZDVkYzNjODUiLCJldmVudF9pZCI6ImZmYTJhN2Q3LTFlNjktMTFlOS04NmZlLTFmMGIzOGM2OWY0NCIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoiYXdzLmNvZ25pdG8uc2lnbmluLnVzZXIuYWRtaW4iLCJhdXRoX3RpbWUiOjE1NDgxNzc2MjIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS1jZW50cmFsLTEuYW1hem9uYXdzLmNvbVwvZXUtY2VudHJhbC0xX0NiekhwU3VrTiIsImV4cCI6MTU0ODE4MTIyMiwiaWF0IjoxNTQ4MTc3NjIyLCJqdGkiOiI4NTJkN2IyOC03YWU3LTRmYWUtOGJiNy1iOGE4MWMwMmE0MzUiLCJjbGllbnRfaWQiOiIxODd1MmRzZG5wbnI2cnBia2F1NGRzczVpZyIsInVzZXJuYW1lIjoidGVzdCJ9.EXJkIWP6AwAL-n7fODfcObvOjjokGKnupB1uqOx4-t_cBTZB8tTwGl1GNcYnmt5xghf-a12UebbaamxjBSPzNhQpgfOVdsd3U6Ni6F3oRWv3sUg36bBs6asQm60iDfPuG3X_SFU9ElDnQ11ki9qGHnCC3WZgaFN3BYF_1rwOmgA63ktoprPDArpzuDr2nIfCG5itJzSdHKJGpTJfU_qKyHmkhmNSYtr0m3IBNv3b4FDo0G7l4nij3m0kAlmC8Q78J5X_pFGoELxDiliykqWdLhkvKVItp1v8ufapnZwhes70pZwJVy0rNaP37-6aNkHTvX3zxJ9tPTlVcPvy0TRvww" https://xpjo63jxj6.execute-api.eu-central-1.amazonaws.com/prd/accounts/items
 
 
 ## Delete all stacks
 
 '''shell
+# delete api stack
+aws cloudformation delete-stack --stack-name testapi --region eu-central-1
 # delete rds stack
 aws cloudformation delete-stack --stack-name testrds --region eu-central-1
 # must delete all files before the deletion of s3 bucket
