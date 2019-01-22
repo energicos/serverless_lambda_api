@@ -22,6 +22,19 @@ components:
             format: int32
           message:
             type: string
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      x-amazon-apigateway-authtype: "cognito_user_pools"
+      x-amazon-apigateway-authorizer:
+        providerARNs:
+        - Fn::Sub: ${UserPool.Arn}
+        type: "cognito_user_pools"
+
+security:
+  - ApiKeyAuth: []
 
 paths:
   # Get All Accounts
