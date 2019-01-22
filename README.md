@@ -168,12 +168,12 @@ curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invok
 
 - insert value:
 
-'''shell
+```hell
 curl -X PUT -H "Content-Type: application/json" -H "Authorization: ${id_token}" -d '[{"item_id":4,"name":"insert"}]' ${invoke_url}/accounts/items
 
 # result:
 {"code": "200", "message": "Successful insert or update"}
-'''
+```
 
 - get the inserted value
 
