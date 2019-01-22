@@ -9,17 +9,16 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 * Enhancement (vpc, subnet, SecurityGroup)
 * Enhancement lambda code and api error message
 * Tagging
+* Advanced Feature: triggering lambda with custom resource
+* Advanced Feature: custom cognito client lambda
 
 
 ## Intro
 
-- we are going to make a simple RESTful API with the following two endpoints:
-  - **POST /users/${userId}/hello** / the request body will be saved in a DynamoDB table. In this tutorial, the request body must have this structure: `{ "email": "any@email.com" }`
-  - **GET /users/${userId}/hello**/ the response will contain the value for `"email"` set in the POST request.
 
 (This is a placeholder for an architecture graph)
 
-## Deployment Environment
+## 1. Deployment Environment
 
 * AWS EC2-AMI (with awscli installed)
 * AdminRole
@@ -27,7 +26,7 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 
 (This can be replaced with a Docker container)
 
-## 1. create a zip file for lambda code
+## 2. Create S3 Stack and Upload files
 
 - now create an s3 bucket
 
@@ -57,7 +56,7 @@ aws s3 cp . s3://${BucketName}  --recursive --include "*.yml"
 ```
 
 
-## 3. Launch RDS  Stack
+## 3. Launch RDS Stack
 
 ```shell
 cd api-masterstack
@@ -91,124 +90,117 @@ aws cloudformation create-stack \
 
 - get Endpoint from the deployed api, call it invoke_url
 
-![get invoke_url from AWS Console](docs/pic_get_invoke_url.png)
+![Get invoke_url from AWS Console](docs/pic_get_invoke_url.png)
 
-'''shell
-// for example
+```shell
+# for example
 export invoke_url=https://t6xvekq3yf.execute-api.eu-central-1.amazonaws.com/Dev
-'''
+```
 
 - get user_pool_id and user_pool_client_id
 
-'''shell
+```shell
 export user_pool_id=$(aws cloudformation list-exports --query "Exports[?Name==\`testapi-UserPoolId\`].Value" --no-paginate --output text --region eu-central-1)
 export user_pool_client_id=$(aws cloudformation list-exports --query "Exports[?Name==\`testapi-UserPoolClientId\`].Value" --no-paginate --output text --region eu-central-1)
-'''
+```
 
 - create user for testing
 
-'''shell
+```shell
 export username=test
 aws cognito-idp admin-create-user --user-pool-id ${user_pool_id} --username ${username} --temporary-password Abcd12345% --region eu-central-1
-'''
+```
 
 - response to challenge
 
-'''shell
+```shell
 export session=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username#,PASSWORD=Abcd12345% --query 'Session' --output text --region eu-central-1)
-'''
+```
 
+
+```shell
 # Be Careful! This is not idempotent
 # response to the challenge
-'''shell
 aws cognito-idp admin-respond-to-auth-challenge --user-pool-id ${user_pool_id} --client-id ${user_pool_client_id}  --challenge-name NEW_PASSWORD_REQUIRED --challenge-responses USERNAME=${username},NEW_PASSWORD=Abcd12345% --session ${session} --region eu-central-1
-'''
+```
 
 - get IdToken
 
-'''shell
+```shell
 export id_token=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username},PASSWORD=Abcd12345%  --region eu-central-1 --query "AuthenticationResult.IdToken" --output text)
-'''
+```
 
-### 7.2 check the GET Endpoint
+## 5. check the API
 
 (The id_token can expire! in which case you have to reaquire a id_token)
 
 - Test GetAllAccounts
 
-'''shell
+```shell
 curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/items
-'''
 
-result:
-'''shell
+# result:
 [{"item_id": 1, "name": "car"}, {"item_id": 2, "name": "teddy bear"}, {"item_id": 3, "name": "knife"}]
-'''
+```
 
 - Test SearchAccounts
 
-'''shell
+```shell
 curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/items?id=1
-'''
+```
 
 - Test UpdateAccount
 
-'''shell
+```shell
 curl -X PUT -H "Content-Type: application/json" -H "Authorization: ${id_token}" -d '[{"item_id":1,"name":"update"}]' ${invoke_url}/accounts/items
-'''
 
-result:
-
-'''shell
+# result:
 {"code": "200", "message": "Successful insert or update"}
-'''
+```
 
-you can get the updated value
+- you can get the updated value
 
-'''shell
+```shell
 curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=1
-'''
 
-result:
-'''shell
+# result:
 [{"item_id": 1, "name": "update"}]
-'''
+```
 
-insert value:
+- insert value:
 
-'''shell
+```hell
 curl -X PUT -H "Content-Type: application/json" -H "Authorization: ${id_token}" -d '[{"item_id":4,"name":"insert"}]' ${invoke_url}/accounts/items
-'''
 
-result:
-'''
+# result:
 {"code": "200", "message": "Successful insert or update"}
-'''
+```
 
-get the inserted value
+- get the inserted value
 
-'''shell
+```shell
 curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
 # result
 [{"item_id": 4, "name": "insert"}]
-'''
+```
 
 - Test delete Accounts
 
-'''shell
+```shell
 curl -X DELETE -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
 # result
 {"code": "200", "message": "Delete Success"}
-'''
+```
 
-try to get the deleted item
-'''shell
+- try to get the deleted item
+
+```shell
 curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=4
 # result
 []
-'''
+```
 
-## 5. Parameter
+## 6. Parameter
 
 ```yaml
 Parameters:
@@ -238,11 +230,11 @@ Parameters:
 ```
 
 
-## 6. Resources
+## 7. Resources
 
 ![](C:\Users\balerion\git\software.dev.notes\aws\images\lambdaapi.png)
 
-### 6.1 API Gateway Ressources
+### 7.1 API Gateway Ressources
 
 - at first we need an api gateway ressource
 - it pulls its ressources (methods etc) from a swagger file sitting in an s3 bucket, which we uploaded before
@@ -299,7 +291,7 @@ Parameters:
 
 
 
-### 6.2 Lambda Resources
+### 7.2 Lambda Resources
 
 - we first create the function
 - it pulls its code from an s3 bucket
@@ -378,7 +370,7 @@ Parameters:
 
 
 
-### 6.3 Dynamo DB Resources
+### 7.3 Dynamo DB Resources
 
 - finally we create the Dynamo Table
 
@@ -398,16 +390,10 @@ Parameters:
 ```
 
 
+## 8. Delete all stacks
 
-
-
-## Delete all stacks
-
-'''shell
+```shell
 # delete api stack
 aws cloudformation delete-stack --stack-name testapi --region eu-central-1
 # delete rds stack
 aws cloudformation delete-stack --stack-name testrds --region eu-central-1
-# must delete all files before the deletion of s3 bucket
-aws cloudformation delete-stack --stack-name tests3 --region eu-central-1
-'''
