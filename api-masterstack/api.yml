@@ -97,7 +97,7 @@ Resources:
         Fn::Transform:
           Name: AWS::Include
           Parameters:
-            Location: !Sub "s3://tests3-s3bucket-1nnle2vgcmsfm/swagger.yml"
+            Location: !Sub 's3://${S3BucketName}/swagger.yml'
       FailOnWarnings: true
   # Deployment ApiGateway
   DeploymentApiGatewayRestApi:

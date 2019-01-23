@@ -115,12 +115,6 @@ Resources:
           DBUser: !Ref DBUser
           DBPassword: !Ref DBPassword
           DBEndpoint: !GetAtt [MasterDB, Endpoint.Address]
-      VpcConfig:
-        SecurityGroupIds:
-        - !GetAtt [DBSecurityGroup, GroupId]
-        SubnetIds:
-        - 'subnet-2db18067'
-        - 'subnet-56db6f2d'
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:

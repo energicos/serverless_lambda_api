@@ -114,7 +114,7 @@ aws cognito-idp admin-create-user --user-pool-id ${user_pool_id} --username ${us
 - response to challenge
 
 ```shell
-export session=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username#,PASSWORD=Abcd12345% --query 'Session' --output text --region eu-central-1)
+export session=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${user_pool_client_id} --auth-parameters USERNAME=${username},PASSWORD=Abcd12345% --query 'Session' --output text --region eu-central-1)
 ```
 
 
@@ -146,7 +146,10 @@ curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invok
 - Test SearchAccounts
 
 ```shell
-curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/items?id=1
+curl -H "Content-Type: application/json" -H "Authorization: ${id_token}" ${invoke_url}/accounts/item?id=1
+
+# result
+[{"item_id": 1, "name": "car"}]
 ```
 
 - Test UpdateAccount
