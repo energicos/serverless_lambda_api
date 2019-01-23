@@ -397,3 +397,6 @@ Parameters:
 aws cloudformation delete-stack --stack-name testapi --region eu-central-1
 # delete rds stack
 aws cloudformation delete-stack --stack-name testrds --region eu-central-1
+# have to delete all objects before deleting the s3 stack
+aws cloudformation delete-stack --stack-name tests3 --region eu-central-1
+```
