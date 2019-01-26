@@ -2,16 +2,6 @@
 
 Create Restful API on AWS with serverless architecture using AWS Lambda, AWS ApiGateway, AWS Cognito. The Restful API execute CRUD operations on RDS Mysql.
 
-## ToDO:
-
-* Echo database password
-* EnvironmentName prefix
-* Enhancement (vpc, subnet, SecurityGroup)
-* Enhancement lambda code and api error message
-* Tagging
-* Advanced Feature: triggering lambda with custom resource
-* Advanced Feature: custom cognito client lambda
-
 
 ## Intro
 
@@ -250,3 +240,13 @@ aws cloudformation delete-stack --stack-name testrds --region eu-central-1
 # have to delete all objects before deleting the s3 stack
 aws cloudformation delete-stack --stack-name tests3 --region eu-central-1
 ```
+
+## ToDO:
+
+* Echo database password
+* EnvironmentName prefix
+* Enhancement (vpc, subnet, SecurityGroup)
+* Enhancement lambda code and api error message
+* Tagging
+* Advanced Feature: triggering lambda with custom resource
+* Advanced Feature: custom cognito client lambda
