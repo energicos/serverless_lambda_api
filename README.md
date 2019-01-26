@@ -15,8 +15,14 @@ Create Restful API on AWS with serverless architecture using AWS Lambda, AWS Api
 
 ## Intro
 
+![Architecture](docs/architecture.png)
 
-(This is a placeholder for an architecture graph)
+API Path Routing:
+
+- /accounts/items GET : get all items from accounts table
+- /accounts/items PUT : insert or update items in accounts table
+- /account/item   GET : search for certain item in accounts table
+- /account/item DELETE: delete item in accounts table
 
 ## 1. Deployment Environment
 
@@ -233,167 +239,8 @@ Parameters:
 ```
 
 
-## 7. Resources
 
-![](C:\Users\balerion\git\software.dev.notes\aws\images\lambdaapi.png)
-
-### 7.1 API Gateway Ressources
-
-- at first we need an api gateway ressource
-- it pulls its ressources (methods etc) from a swagger file sitting in an s3 bucket, which we uploaded before
-
-```yaml
-  MyApiGateway:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Name: !Sub "${AWS::StackName}-MyApiGateway"
-      Description: A description
-      FailOnWarnings: true
-      Body:
-        Fn::Transform:
-          Name: AWS::Include
-          Parameters:
-            Location: !Sub "s3://${AWS::AccountId}-${Project}-swaggerapis/lambda1_swagger.yaml"
-```
-
-- now we need a deployment for the api gateway
-
-```yaml
-  MyApiGatewayDeployment:
-    Type: AWS::ApiGateway::Deployment
-    Properties:
-      RestApiId: !Ref MyApiGateway
-      StageName: prod
-```
-
-- and finally the appropriate IAM Service Role for the API Gateway resource
-- it allows the apigateway resource to invoke Lambda functions
-
-```yaml
-  MyApiGatewayRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: apigateway.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: InvokeLambda
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource:
-                  - !GetAtt HelloLambda.Arn
-```
-
-
-
-### 7.2 Lambda Resources
-
-- we first create the function
-- it pulls its code from an s3 bucket
-
-```yaml
-  HelloLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      Role: !GetAtt HelloLambdaRole.Arn  # TODO
-      Handler: index.handleHttpRequest
-      Runtime: nodejs6.10
-      Environment:
-        Variables:
-          HELLO_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${HelloTable}"
-      Code:
-        S3Bucket:
-          Fn::ImportValue: !Sub ${EnvironmentName}-LambdaCodeBucket-Name
-        S3Key: lambdaone/account_index.zip
-```
-
-- now we need the Lambda policy to allow logging
-
-```yaml
- # Policy required for all lambda function roles.
-  BaseLambdaExecutionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Base permissions needed by all lambda functions.
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-              - ec2:CreateNetworkInterface
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DeleteNetworkInterface
-            Resource: "*"
-```
-
-- after that we create the case-specific Service role for Lambda
-
-```yaml
-  HelloLambdaRole:  # -> AppAPIRole
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !Ref BaseLambdaExecutionPolicy
-      Policies:
-        - PolicyName: getHello
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:GetItem
-                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${HelloTable}"
-        - PolicyName: putHello
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:PutItem
-                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${HelloTable}"
-```
-
-
-
-### 7.3 Dynamo DB Resources
-
-- finally we create the Dynamo Table
-
-```yaml
-  HelloTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-      AttributeDefinitions:
-        - AttributeName: user_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: user_id
-          KeyType: HASH
-```
-
-
-## 8. Delete all stacks
+## 7. Delete all stacks
 
 ```shell
 # delete api stack
