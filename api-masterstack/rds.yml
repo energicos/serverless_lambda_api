@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  License: Apache-2.0
+Description: 'AWS CloudFormation Template for RDS and Lambda to populate the database'
+Parameters:
+  Owner:
+    Description: Enter Team or Individual Name Responsible for the Stack.
+    Type: String
+    Default: Andreas Rose
+  Project:
+    Description: Enter Project Name.
+    Type: String
+    Default: Project
+  Subproject:
+    Description: Enter Project Name.
+    Type: String
+    Default: Subproject
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+    ConstraintDescription: Specify either Dev or Prod
+  S3BucketName:
+    Description: The S3 Bucket where lambda deployment package is stored
+    Type: String
+  DBName:
+    Default: MyDatabase
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBUser:
+    Default: mytestuser
+    NoEcho: 'true'
+    Description: The database admin account username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBPassword:
+    Default: mytestpassword
+    NoEcho: 'true'
+    Description: The database admin account password
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBAllocatedStorage:
+    Default: '5'
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 5 and 1024Gb.
+  DBInstanceClass:
+    Description: The database instance type
+    Type: String
+    Default: db.t2.small
+    AllowedValues: [db.t1.micro, db.m1.small, db.m1.medium, db.t2.small]
+    ConstraintDescription: must select a valid database instance type.
+  MultiAZ:
+    Description: Multi-AZ master database
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    ConstraintDescription: must be true or false.
+Resources:
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        CidrIp: '0.0.0.0/0'
+  MasterDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Join [ "" , [ !Ref EnvironmentName , !Ref 'DBName' ]]
+      AllocatedStorage: !Ref 'DBAllocatedStorage'
+      DBInstanceClass: !Ref 'DBInstanceClass'
+      Engine: MySQL
+      MasterUsername: !Ref 'DBUser'
+      MasterUserPassword: !Ref 'DBPassword'
+      MultiAZ: !Ref 'MultiAZ'
+      Tags:
+      - Key: Name
+        Value: Master Database
+      VPCSecurityGroups:
+      - !GetAtt [DBSecurityGroup, GroupId]
+    DeletionPolicy: Snapshot
+  CreateTableRDSLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: 'create-table-rds.zip'
+      Handler: create-table-rds.handler
+      Role: !GetAtt 'LambdaExecutionRole.Arn'
+      Runtime: python3.6
+      Timeout: '30'
+      Environment:
+        Variables:
+          DBName: !Ref DBName
+          DBUser: !Ref DBUser
+          DBPassword: !Ref DBPassword
+          DBEndpoint: !GetAtt [MasterDB, Endpoint.Address]
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: '*'
+Outputs:
+  DBName:
+    Value: !Ref DBName
+    Export:
+      Name: !Sub "${AWS::StackName}-DBName"
+  DBUser:
+    Value: !Ref DBUser
+    Export:
+      Name: !Sub "${AWS::StackName}-DBUser"
+  DBPassword:
+    Value: !Ref DBPassword
+    Export:
+      Name: !Sub "${AWS::StackName}-DBPassword"
+  DBEndpoint:
+    Value: !GetAtt [MasterDB, Endpoint.Address]
+    Export:
+      Name: !Sub "${AWS::StackName}-DBEndpoint"
+  DBSecurityGroupId:
+    Value: !GetAtt [DBSecurityGroup, GroupId]
+    Export:
+      Name: !Sub "${AWS::StackName}-DBSecurityGroupId"
+  LambdaArn:
+    Value: !Ref CreateTableRDSLambda
+    Export:
+      Name: !Sub "${AWS::StackName}-CreateTableRDSLambdaArn"

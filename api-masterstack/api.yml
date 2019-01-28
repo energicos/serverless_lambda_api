@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  License: Apache-2.0
+Description: 'Create Serverless Application with ApiGateway, Lambda'
+Parameters:
+  Owner:
+    Description: Enter Team or Individual Name Responsible for the Stack.
+    Type: String
+    Default: Andreas Rose
+  Project:
+    Description: Enter Project Name.
+    Type: String
+    Default: Project
+  Subproject:
+    Description: Enter Project Name.
+    Type: String
+    Default: Subproject
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+    ConstraintDescription: Specify either Dev or Prod
+  S3BucketName:
+    Description: The S3 Bucket where lambda deployment package is stored
+    Type: String
+Resources:
+  # Creates a user pool in cognito for your app to auth against
+  UserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      UserPoolName: !Sub ${EnvironmentName}-user-pool
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: 'UserPoolClienttest'
+      GenerateSecret: false
+      RefreshTokenValidity: 30
+      UserPoolId: !Ref UserPool
+      ExplicitAuthFlows:
+        - USER_PASSWORD_AUTH
+  AdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      Username: 'Admin'
+      UserPoolId: !Ref UserPool
+  # Get All Accounts Lambda
+  GetAllAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'get-all-accounts'
+        S3Bucket: !Ref S3BucketName
+        RDSStackName: 'testrds'
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda.yml'
+      TimeoutInMinutes: 2
+  # Search Accounts Lambda
+  SearchAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'search-accounts'
+        S3Bucket: !Ref S3BucketName
+        RDSStackName: 'testrds'
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda.yml'
+      TimeoutInMinutes: 2
+  # Update Accounts Lambda
+  UpdateAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'update-accounts'
+        S3Bucket: !Ref S3BucketName
+        RDSStackName: 'testrds'
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda.yml'
+      TimeoutInMinutes: 2
+  # Update Accounts Lambda
+  DeleteAccountsLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaName: 'delete-accounts'
+        S3Bucket: !Ref S3BucketName
+        RDSStackName: 'testrds'
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda.yml'
+      TimeoutInMinutes: 2
+
+  # ApiGateway
+  ApiGatewayRestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Description: "testApi"
+      Name: TestAPI
+      Body:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: !Sub 's3://${S3BucketName}/swagger.yml'
+      FailOnWarnings: true
+  # Deployment ApiGateway
+  DeploymentApiGatewayRestApi:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Deployment of Apigateway
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: !Ref EnvironmentName
+
+  # Lambda Permission
+  GetAllAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [GetAllAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda_permission.yml'
+      TimeoutInMinutes: 2
+  SearchAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [SearchAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda_permission.yml'
+      TimeoutInMinutes: 2
+  UpdateAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [UpdateAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda_permission.yml'
+      TimeoutInMinutes: 2
+  DeleteAccountsLambdaPermissionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LambdaArn: !GetAtt [DeleteAccountsLambdaStack, Outputs.LambdaArn]
+        ApiGatewayRestApiLogicalID: !Ref ApiGatewayRestApi
+      TemplateURL: !Sub 'https://s3.eu-central-1.amazonaws.com/${S3BucketName}/template_lambda_permission.yml'
+      TimeoutInMinutes: 2
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+  AdminUser:
+    Value: !Ref AdminUser
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminUser"
+  APIEndpoint:
+    Value: !Ref DeploymentApiGatewayRestApi
+    Export:
+      Name: !Sub "${AWS::StackName}-APIEndpoint"
